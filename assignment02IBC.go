@@ -19,6 +19,11 @@ type Block struct {
 
 func CalculateBalance(userName string, chainHead *Block) int {
 	balance := 0
+	for c := chainHead; c != nil; c = c.PrevPointer {
+		balance += c.Receiver[userName]
+		balance -= c.Spender[userName]
+	}
+	//fmt.Println(balance)
 	return balance
 }
 
@@ -48,42 +53,58 @@ func CalculateHash(inputBlock *Block) string {
 	return currentHash
 }
 
-func InsertBlock(spendingUser string, receivingUser string, miner string, amount int, g, chainHead *Block) *Block {
+func InsertBlock(spendingUser string, receivingUser string, miner string, amount int, chainHead *Block) *Block {
+	if miner != rootUser {
+		fmt.Print("Invalid insertion: miner error\n")
+		return chainHead
+	}
+	if spendingUser != rootUser {
+		check_bal := CalculateBalance(spendingUser, chainHead)
+		if amount > check_bal {
+			fmt.Print("Invalid insertion: bal error\n")
+			return chainHead
+		}
+	}
+
 	if chainHead == nil {
 		b := &Block{nil, nil, chainHead, "", ""}
+		b.Receiver = make(map[string]int)
+		b.Spender = make(map[string]int)
 		b.Receiver[rootUser] += miningReward
 		b.CurrentHash = CalculateHash(b)
+		//fmt.Println("First block mined")
+		//fmt.Print(b.Receiver)
 		return b
-	}
-	if miner != rootUser {
-		fmt.Print("Invalid insertion")
-		return nil
 	}
 
 	b := &Block{nil, nil, chainHead, "", ""}
 	b.PrevHash = CalculateHash(chainHead)
 	check_bal := CalculateBalance(spendingUser, chainHead)
-	if check_bal >= amount {
+	b.Receiver = make(map[string]int)
+	b.Spender = make(map[string]int)
+	if amount <= check_bal {
 		b.Spender[spendingUser] = amount
 		b.Receiver[receivingUser] = amount
 		b.Receiver[rootUser] += miningReward
 		b.CurrentHash = CalculateHash(b)
 		return b
 	}
-	fmt.Print("Invalid insertion")
-	return nil
+
+	return chainHead
 }
 
 func ListBlocks(chainHead *Block) {
 	for c := chainHead; c != nil; c = c.PrevPointer {
 		//print("Hash Current: ", c.currentHash, " ")
-		fmt.Print("Received")
+		fmt.Print("Received: ")
 		for key, value := range c.Receiver {
-			fmt.Print(key, value)
+			fmt.Print(key, " ", value)
+			fmt.Print(", ")
 		}
-		fmt.Print("Spent")
+		fmt.Print("Spent: ")
 		for key, value := range c.Spender {
-			fmt.Print(key, value)
+			fmt.Print(key, " ", value)
+			fmt.Print(", ")
 		}
 		fmt.Print(" ---> ")
 	}
